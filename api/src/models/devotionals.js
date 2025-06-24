@@ -1,4 +1,4 @@
-// backend/src/models/Devotional.js
+
 import mongoose from 'mongoose';
 
 const devotionalSchema = new mongoose.Schema({

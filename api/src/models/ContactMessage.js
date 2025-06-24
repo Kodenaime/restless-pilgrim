@@ -1,4 +1,4 @@
-// backend/src/models/ContactMessage.js
+
 import mongoose from 'mongoose';
 
 const contactMessageSchema = new mongoose.Schema({

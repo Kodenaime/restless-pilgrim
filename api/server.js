@@ -1,8 +1,9 @@
-// server/server.js
+
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import connectDB from './src/config/db.js';
+import adminRoutes from './src/routes/adminRoutes.js'
 
 const app = express();
 
@@ -12,6 +13,9 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+//Main Routes 
+app.use('/api/admin', adminRoutes);
 
 // Routes
 app.get('/api/test', (req, res) => {
