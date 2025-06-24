@@ -1,64 +1,47 @@
-// server/models/Devotional.js
+// backend/src/models/Devotional.js
 import mongoose from 'mongoose';
 
 const devotionalSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true,
+    required: [true, 'Devotional title is required'],
     trim: true,
-    maxlength: 200
+    maxlength: [200, 'Title cannot exceed 200 characters']
   },
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  scriptureReference: {
+  passage: {
     type: String,
-    required: true,
-    trim: true
+    required: [true, 'Scripture passage is required'],
+    trim: true,
+    maxlength: [100, 'Passage reference cannot exceed 100 characters']
   },
-  scriptureText: {
+  shortDescription: {
     type: String,
-    required: true
+    required: [true, 'Short description is required'],
+    trim: true,
+    maxlength: [500, 'Short description cannot exceed 500 characters']
   },
   content: {
     type: String,
-    required: true
-  },
-  author: {
-    type: String,
-    default: 'Anonymous',
+    required: [true, 'Content is required'],
     trim: true
   },
-  tags: [{
+  coverImageUrl: {
     type: String,
-    trim: true,
-    lowercase: true
-  }],
-  isPublished: {
-    type: Boolean,
-    default: false
+    required: [true, 'Cover image URL is required'],
+    trim: true
   },
-  createdAt: {
+  publishDate: {
     type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
+    required: [true, 'Publish date is required'],
     default: Date.now
   }
-});
-
-// Update the updatedAt field before saving
-devotionalSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
+}, {
+  timestamps: true // Automatically adds createdAt and updatedAt
 });
 
 // Create indexes for better query performance
-devotionalSchema.index({ date: -1 });
-devotionalSchema.index({ isPublished: 1 });
-devotionalSchema.index({ tags: 1 });
+devotionalSchema.index({ publishDate: -1 });
+devotionalSchema.index({ title: 1 });
+devotionalSchema.index({ createdAt: -1 });
 
 export default mongoose.model('Devotional', devotionalSchema);
