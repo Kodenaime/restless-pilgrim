@@ -6,6 +6,8 @@ import connectDB from './src/config/db.js';
 import adminRoutes from './src/routes/adminRoutes.js'
 import devotionalRoutes from './src/routes/devotionalRoutes.js'
 import bookRoutes from './src/routes/bookRoutes.js'
+import newsletterRoutes from './src/routes/newsletterRoutes.js'
+import contactRoutes from './src/routes/contactRoutes.js'
 
 
 const app = express();
@@ -21,6 +23,8 @@ app.use(express.json());
 app.use('/api/admin', adminRoutes);
 app.use('/api/devotionals', devotionalRoutes);
 app.use('/api/books', bookRoutes);
+app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Routes
 app.get('/api/test', (req, res) => {
