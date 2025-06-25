@@ -4,6 +4,9 @@ import express from 'express';
 import cors from 'cors';
 import connectDB from './src/config/db.js';
 import adminRoutes from './src/routes/adminRoutes.js'
+import devotionalRoutes from './src/routes/devotionalRoutes.js'
+import bookRoutes from './src/routes/bookRoutes.js'
+
 
 const app = express();
 
@@ -16,6 +19,8 @@ app.use(express.json());
 
 //Main Routes 
 app.use('/api/admin', adminRoutes);
+app.use('/api/devotionals', devotionalRoutes);
+app.use('/api/books', bookRoutes);
 
 // Routes
 app.get('/api/test', (req, res) => {
