@@ -30,7 +30,7 @@ const newsletterSubscriberSchema = new mongoose.Schema({
 });
 
 // Create indexes for better query performance
-newsletterSubscriberSchema.index({ email: 1 });
+// newsletterSubscriberSchema.index({ email: 1 });
 newsletterSubscriberSchema.index({ subscribedAt: -1 });
 newsletterSubscriberSchema.index({ isActive: 1 });
 

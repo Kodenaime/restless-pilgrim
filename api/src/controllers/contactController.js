@@ -93,7 +93,7 @@ Please reply directly to: ${email}
 
     // Send email using Resend
     const emailResponse = await resend.emails.send({
-      from: 'Church Website <no-reply@yourdomain.com>', // Replace with your verified domain
+      from: 'daniel@innovatechnolgies.com', // Replace with your verified domain
       to: [process.env.PASTOR_EMAIL],
       subject: `New Contact Message from ${name}`,
       html: emailHtml,
