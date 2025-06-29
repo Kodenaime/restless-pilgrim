@@ -7,25 +7,33 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB limit (reduced from 50MB for base64)
-    files: 1 // Only allow one file
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Only accept cover images
+    // Accept images for cover and PDFs for books
     if (file.fieldname === 'coverImage') {
       if (file.mimetype.startsWith('image/')) {
         cb(null, true);
       } else {
-        cb(new Error('Only image files are allowed for cover'), false);
+        cb(new Error('Cover image must be an image file'), false);
+      }
+    } else if (file.fieldname === 'bookPdf') {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Book file must be a PDF'), false);
       }
     } else {
-      cb(new Error('Unexpected field - only coverImage is allowed'), false);
+      cb(new Error('Unexpected field'), false);
     }
   }
 });
 
-// Middleware function to handle single file upload
-const uploadCoverImage = upload.single('coverImage');
+// Middleware function to handle file uploads
+const uploadBookFiles = upload.fields([
+  { name: 'coverImage', maxCount: 1 },
+  { name: 'bookPdf', maxCount: 1 }
+]);
 
 // Error handling middleware for multer
 const handleUploadError = (error, req, res, next) => {
@@ -33,13 +41,7 @@ const handleUploadError = (error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'Cover image too large. Maximum size is 2MB.'
-      });
-    }
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
-        success: false,
-        message: 'Only one file is allowed for cover image.'
+        message: 'File too large. Maximum size is 50MB.'
       });
     }
   }
@@ -54,4 +56,4 @@ const handleUploadError = (error, req, res, next) => {
   next();
 };
 
-export { uploadCoverImage, handleUploadError };
+export { uploadBookFiles, handleUploadError };

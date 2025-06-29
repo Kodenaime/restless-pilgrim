@@ -1,7 +1,54 @@
-import Book from '../models/Book.js';
 
-// Maximum image size (2MB)
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+import Book from '../models/Book.js';
+import { bucket } from '../config/firebase.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper function to upload file to Firebase Storage
+const uploadFileToFirebase = async (file, folder) => {
+  if (!file) return null;
+
+  const fileName = `${folder}/${uuidv4()}-${file.originalname}`;
+  const fileUpload = bucket.file(fileName);
+
+  const stream = fileUpload.createWriteStream({
+    metadata: {
+      contentType: file.mimetype,
+    },
+    public: true,
+  });
+
+  return new Promise((resolve, reject) => {
+    stream.on('error', (error) => {
+      reject(error);
+    });
+
+    stream.on('finish', async () => {
+      try {
+        // Make the file public
+        await fileUpload.makePublic();
+        
+        // Get the public URL
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        resolve({ fileName, publicUrl });
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    stream.end(file.buffer);
+  });
+};
+
+// Helper function to delete file from Firebase Storage
+const deleteFileFromFirebase = async (fileName) => {
+  if (!fileName) return;
+  
+  try {
+    await bucket.file(fileName).delete();
+  } catch (error) {
+    console.error('Error deleting file from Firebase:', error);
+  }
+};
 
 // @desc    Create new book
 // @route   POST /api/books
@@ -10,31 +57,32 @@ export const createBook = async (req, res) => {
   try {
     const { title, author, description, genre, publishedDate, isbn, price } = req.body;
 
-    // Check if book with same ISBN already exists
-    const existingBook = await Book.findOne({ isbn });
+    // Check if book with same title and author already exists
+    const existingBook = await Book.findOne({ title, author });
     if (existingBook) {
       return res.status(400).json({
         success: false,
-        message: 'Book with this ISBN already exists'
+        message: 'Book with this title and author already exists'
       });
     }
 
-    let coverImage = null;
-    let coverImageType = null;
+    let coverImageUrl = null;
+    let bookPdfUrl = null;
+    let coverImageFileName = null;
+    let bookPdfFileName = null;
 
-    // Process cover image if provided
-    if (req.file) {
-      // Check file size
-      if (req.file.size > MAX_IMAGE_SIZE) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cover image must be less than 2MB'
-        });
-      }
+    // Upload cover image if provided
+    if (req.files && req.files.coverImage) {
+      const coverResult = await uploadFileToFirebase(req.files.coverImage[0], 'book-covers');
+      coverImageUrl = coverResult.publicUrl;
+      coverImageFileName = coverResult.fileName;
+    }
 
-      // Convert buffer to base64
-      coverImage = req.file.buffer.toString('base64');
-      coverImageType = req.file.mimetype;
+    // Upload book PDF if provided
+    if (req.files && req.files.bookPdf) {
+      const pdfResult = await uploadFileToFirebase(req.files.bookPdf[0], 'book-pdfs');
+      bookPdfUrl = pdfResult.publicUrl;
+      bookPdfFileName = pdfResult.fileName;
     }
 
     // Create book document
@@ -42,11 +90,14 @@ export const createBook = async (req, res) => {
       title,
       author,
       description,
+      genre,
       publishedDate,
       isbn,
       price: price ? parseFloat(price) : 0,
-      coverImage,
-      coverImageType,
+      coverImage: coverImageUrl,
+      bookPdf: bookPdfUrl,
+      coverImageFileName,
+      bookPdfFileName,
       user: req.user.id
     });
 
@@ -74,8 +125,8 @@ export const getBooks = async (req, res) => {
 
     // Build filter object
     const filter = {};
-    if (req.query.title) {
-      filter.title = new RegExp(req.query.title, 'i');
+    if (req.query.genre) {
+      filter.genre = new RegExp(req.query.genre, 'i');
     }
     if (req.query.author) {
       filter.author = new RegExp(req.query.author, 'i');
@@ -88,13 +139,12 @@ export const getBooks = async (req, res) => {
       ];
     }
 
-     const books = await Book.find(filter)
+    const books = await Book.find(filter)
       .populate('user', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // Direct mapping now that virtuals are included
     const total = await Book.countDocuments(filter);
 
     res.json({
@@ -130,7 +180,7 @@ export const getBookById = async (req, res) => {
 
     res.json({
       success: true,
-      data: book // Virtual will be included automatically
+      data: book
     });
   } catch (error) {
     console.error('Get book error:', error);
@@ -171,31 +221,45 @@ export const updateBook = async (req, res) => {
       });
     }
 
-    const { title, author, description, publishedDate, isbn, price } = req.body;
+    const { title, author, description, genre, publishedDate, isbn, price } = req.body;
+    
+    // Store old file names for potential deletion
+    const oldCoverImageFileName = book.coverImageFileName;
+    const oldBookPdfFileName = book.bookPdfFileName;
 
     // Update text fields
     const updateData = {
       title: title || book.title,
       author: author || book.author,
       description: description || book.description,
+      genre: genre || book.genre,
       publishedDate: publishedDate || book.publishedDate,
       isbn: isbn || book.isbn,
       price: price ? parseFloat(price) : book.price
     };
 
-    // Process cover image if provided
-    if (req.file) {
-      // Check file size
-      if (req.file.size > MAX_IMAGE_SIZE) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cover image must be less than 2MB'
-        });
+    // Handle cover image upload
+    if (req.files && req.files.coverImage) {
+      const coverResult = await uploadFileToFirebase(req.files.coverImage[0], 'book-covers');
+      updateData.coverImage = coverResult.publicUrl;
+      updateData.coverImageFileName = coverResult.fileName;
+      
+      // Delete old cover image
+      if (oldCoverImageFileName) {
+        await deleteFileFromFirebase(oldCoverImageFileName);
       }
+    }
 
-      // Convert buffer to base64
-      updateData.coverImage = req.file.buffer.toString('base64');
-      updateData.coverImageType = req.file.mimetype;
+    // Handle book PDF upload
+    if (req.files && req.files.bookPdf) {
+      const pdfResult = await uploadFileToFirebase(req.files.bookPdf[0], 'book-pdfs');
+      updateData.bookPdf = pdfResult.publicUrl;
+      updateData.bookPdfFileName = pdfResult.fileName;
+      
+      // Delete old PDF
+      if (oldBookPdfFileName) {
+        await deleteFileFromFirebase(oldBookPdfFileName);
+      }
     }
 
     book = await Book.findByIdAndUpdate(req.params.id, updateData, {
@@ -203,15 +267,9 @@ export const updateBook = async (req, res) => {
       runValidators: true
     }).populate('user', 'name');
 
-    // Convert to plain object and add coverImagePath
-    const bookObject = book.toObject();
-    if (book.coverImage) {
-      bookObject.coverImagePath = book.coverImagePath;
-    }
-
     res.json({
       success: true,
-      data: bookObject
+      data: book
     });
   } catch (error) {
     console.error('Update book error:', error);
@@ -250,6 +308,14 @@ export const deleteBook = async (req, res) => {
         success: false,
         message: 'Not authorized to delete this book'
       });
+    }
+
+    // Delete files from Firebase Storage
+    if (book.coverImageFileName) {
+      await deleteFileFromFirebase(book.coverImageFileName);
+    }
+    if (book.bookPdfFileName) {
+      await deleteFileFromFirebase(book.bookPdfFileName);
     }
 
     // Delete book from database
