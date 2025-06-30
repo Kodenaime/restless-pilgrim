@@ -15,6 +15,16 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// CORS Configuration
+const corsOptions = {
+  origin: 'http://localhost:5173', // Your frontend URL
+  credentials: true,               // Allow cookies/tokens in requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization']       // Allowed headers
+};
+
+app.use(cors(corsOptions));
+
 // Middleware
 app.use(cors());
 app.use(express.json());

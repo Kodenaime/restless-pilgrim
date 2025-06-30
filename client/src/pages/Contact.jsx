@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import PageHead from "../components/PageHead";
+import contactImage from '../assets/back.jpeg'
 
 const Contact = () => {
 
@@ -32,7 +33,7 @@ const Contact = () => {
 
   return (
     <>
-      <PageHead />
+      <PageHead title="Contact Us" backgroundImage={contactImage}/>
       <section className="px-4 py-10 md:px-12 lg:px-32 bg-gray-50">
       <h2 className="text-2xl md:text-3xl font-bold mb-6 text-[#964B00]">Contact Us</h2>
       <form
